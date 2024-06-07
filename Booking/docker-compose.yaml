@@ -1,0 +1,60 @@
+version: '3.9'
+
+networks:
+  booking:
+    driver: bridge
+
+volumes:
+  booking_auth:
+  booking_core:
+
+services:
+  booking_auth_db:
+    container_name: booking_auth_db
+    image: postgres:12
+    ports:
+      - '5434:5432'
+    environment:
+      POSTGRES_USER: denis
+      POSTGRES_PASSWORD: denis123
+      POSTGRES_DB: auth_db
+    networks: [ booking ]
+    volumes:
+      - booking_auth:/var/lib/postgresql/data
+
+  booking_core_db:
+    container_name: booking_core_db
+    image: postgres:12
+    ports:
+      - '5435:5432'
+    environment:
+      POSTGRES_USER: denis
+      POSTGRES_PASSWORD: denis123
+      POSTGRES_DB: core_db
+    networks: [ booking ]
+    volumes:
+      - booking_core:/var/lib/postgresql/data
+      - './init.sql:/docker-entrypoint-initdb.d/init.sql'
+
+  auth_app:
+    container_name: auth_app
+    image: dammchik/app-auth:01
+    ports:
+      - '8080:8080'
+    environment:
+      DATASOURCE_URL: 'jdbc:postgresql://booking_auth_db:5432/auth_db'
+    networks: [ booking ]
+    depends_on:
+      - booking_auth_db
+
+  core_app:
+    container_name: core_app
+    image: dammchik/app-booking:01
+    ports:
+      - '8081:8080'
+    environment:
+      DATASOURCE_URL: 'jdbc:postgresql://booking_core_db:5432/core_db'
+      SERVER_PORT: 8080
+    networks: [ booking ]
+    depends_on:
+      - booking_core_db
